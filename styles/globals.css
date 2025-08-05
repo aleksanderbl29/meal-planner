@@ -1,7 +1,24 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* SF Pro Font Stack */
+@font-face {
+  font-family: "SF Pro Display";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("SF Pro Display"), local("SFProDisplay");
+}
+
+@font-face {
+  font-family: "SF Pro Text";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("SF Pro Text"), local("SFProText");
+}
 
 :root {
   --background: oklch(1 0 0);
@@ -113,11 +130,32 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Font smoothing and rendering optimizations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
   }
+}
+
+/* Custom utility classes for SF Pro fonts */
+.font-sf-display {
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial,
+    sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1, "ss02" 1;
+}
+
+.font-sf-text {
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial,
+    sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
-import { Plus, Calendar, List, Edit, Trash2, Filter } from "lucide-react"
+import { da } from "date-fns/locale"
+import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -134,16 +135,14 @@ export default function MealPlannerApp() {
     })
 
   const getWeekDateRange = (week: number, year: number) => {
-    // Create a date for the first day of the year
     const firstDayOfYear = new Date(year, 0, 1)
-    // Calculate the start of the specified week
-    const startOfTargetWeek = startOfWeek(addWeeks(firstDayOfYear, week - 1))
+    const startOfTargetWeek = startOfWeek(addWeeks(firstDayOfYear, week - 1), { locale: da })
     const endOfTargetWeek = new Date(startOfTargetWeek)
     endOfTargetWeek.setDate(startOfTargetWeek.getDate() + 6)
 
     return {
-      start: format(startOfTargetWeek, "MMM d"),
-      end: format(endOfTargetWeek, "MMM d, yyyy"),
+      start: format(startOfTargetWeek, "d. MMM", { locale: da }),
+      end: format(endOfTargetWeek, "d. MMM", { locale: da }),
     }
   }
 
@@ -155,7 +154,7 @@ export default function MealPlannerApp() {
 
       if (targetWeek < 1) {
         targetYear -= 1
-        targetWeek += 52 // Approximate, but good enough for display
+        targetWeek += 52
       } else if (targetWeek > 52) {
         targetYear += 1
         targetWeek -= 52
@@ -175,7 +174,7 @@ export default function MealPlannerApp() {
     for (let i = 1; i <= 52; i++) {
       options.push(
         <SelectItem key={i} value={i.toString()}>
-          Week {i}
+          Uge {i}
         </SelectItem>,
       )
     }
@@ -253,14 +252,16 @@ export default function MealPlannerApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Meal Planner</h1>
-          <p className="text-gray-600">Plan and organize your meals by week</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
+          <p className="text-slate-600 font-sf-text font-light">Planlæg dine måltider efter uge</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        {/* Action Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <Dialog
             open={isAddDialogOpen}
             onOpenChange={(open) => {
@@ -271,99 +272,114 @@ export default function MealPlannerApp() {
             }}
           >
             <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
+              <Button className="bg-slate-900 hover:bg-slate-800 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6">
                 <Plus className="w-4 h-4" />
-                Add Meal
+                Tilføj måltid
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="rounded-2xl border-0 shadow-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Meal</DialogTitle>
+                <DialogTitle className="text-xl font-sf-display font-light text-slate-900">Nyt måltid</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <Label htmlFor="meal-name">Meal Name</Label>
+                  <Label htmlFor="meal-name" className="text-slate-700 font-medium">
+                    Navn
+                  </Label>
                   <Input
                     id="meal-name"
                     value={newMealName}
                     onChange={(e) => setNewMealName(e.target.value)}
-                    placeholder="Enter meal name"
+                    placeholder="Indtast måltidsnavn"
+                    className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label>When do you want this meal?</Label>
+                <div className="space-y-4">
+                  <Label className="text-slate-700 font-medium">Hvornår?</Label>
 
-                  {/* Quick Selection Buttons */}
+                  {/* Quick Selection */}
                   <div className="flex gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeek(0)}
-                      className={
+                      className={`rounded-full border-slate-200 hover:bg-slate-50 ${
                         newMealWeek === currentWeek.toString() && newMealYear === currentYear.toString()
-                          ? "bg-blue-100 border-blue-300"
+                          ? "bg-slate-100 border-slate-300"
                           : ""
-                      }
+                      }`}
                     >
-                      This Week
+                      Denne uge
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setQuickWeek(1)}>
-                      Next Week
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeek(1)}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      Næste uge
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowAdvancedDatePicker(!showAdvancedDatePicker)}
+                      className="rounded-full text-slate-600 hover:bg-slate-50"
                     >
-                      {showAdvancedDatePicker ? "Hide" : "More"} Options
+                      <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </div>
 
-                  {/* Current Selection Display */}
-                  <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                    Selected: Week {newMealWeek}, {newMealYear}
+                  {/* Current Selection */}
+                  <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl">
+                    Valgt: Uge {newMealWeek}, {newMealYear}
                     {newMealWeek && newMealYear && (
-                      <span className="ml-2">
+                      <span className="ml-2 text-slate-500">
                         ({getWeekDateRange(Number.parseInt(newMealWeek), Number.parseInt(newMealYear)).start} -{" "}
                         {getWeekDateRange(Number.parseInt(newMealWeek), Number.parseInt(newMealYear)).end})
                       </span>
                     )}
                   </div>
 
-                  {/* Advanced Date Picker */}
+                  {/* Advanced Options */}
                   {showAdvancedDatePicker && (
-                    <div className="space-y-3 border-t pt-3">
+                    <div className="space-y-4 border-t border-slate-100 pt-4">
                       <div>
-                        <Label htmlFor="date-picker">Pick a specific date</Label>
+                        <Label htmlFor="date-picker" className="text-slate-700">
+                          Vælg dato
+                        </Label>
                         <Input
                           id="date-picker"
                           type="date"
                           onChange={(e) => handleDatePickerChange(e.target.value)}
-                          className="mt-1"
+                          className="mt-2 border-slate-200 rounded-xl"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          The meal will be planned for the week containing this date
+                        <p className="text-xs text-slate-500 mt-1">
+                          Måltidet planlægges for ugen der indeholder denne dato
                         </p>
                       </div>
 
-                      <div className="text-sm text-gray-600">Or select manually:</div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="meal-week">Week</Label>
+                          <Label htmlFor="meal-week" className="text-slate-700">
+                            Uge
+                          </Label>
                           <Select value={newMealWeek} onValueChange={setNewMealWeek}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select week" />
+                            <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
+                              <SelectValue placeholder="Vælg uge" />
                             </SelectTrigger>
                             <SelectContent>{generateWeekOptions()}</SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="meal-year">Year</Label>
+                          <Label htmlFor="meal-year" className="text-slate-700">
+                            År
+                          </Label>
                           <Select value={newMealYear} onValueChange={setNewMealYear}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select year" />
+                            <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
+                              <SelectValue placeholder="Vælg år" />
                             </SelectTrigger>
                             <SelectContent>{generateYearOptions()}</SelectContent>
                           </Select>
@@ -372,93 +388,119 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
-                <Button onClick={addMeal} className="w-full">
-                  Add Meal
+                <Button onClick={addMeal} className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3">
+                  Tilføj måltid
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
 
           <Select value={filter} onValueChange={(value: "all" | "thisWeek") => setFilter(value)}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full sm:w-48 border-slate-200 rounded-xl">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Meals</SelectItem>
-              <SelectItem value="thisWeek">This Week Only</SelectItem>
+              <SelectItem value="all">Alle måltider</SelectItem>
+              <SelectItem value="thisWeek">Kun denne uge</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
+        {/* Tabs */}
         <Tabs defaultValue="list" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="list" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 bg-slate-100 rounded-2xl p-1 mb-8">
+            <TabsTrigger
+              value="list"
+              className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
               <List className="w-4 h-4" />
-              Upcoming
+              Kommende
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
+            <TabsTrigger
+              value="calendar"
+              className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
               <Calendar className="w-4 h-4" />
-              Calendar
+              Kalender
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
+            <TabsTrigger
+              value="history"
+              className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
               <List className="w-4 h-4" />
-              History
+              Historik
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="list" className="space-y-4">
             {upcomingMeals.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-gray-500">No meals planned yet. Add your first meal!</p>
+              <Card className="border-0 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-12 text-center">
+                  <p className="text-slate-500 font-light">Ingen måltider planlagt endnu</p>
                 </CardContent>
               </Card>
             ) : (
               upcomingMeals.map((meal) => {
                 const dateRange = getWeekDateRange(meal.week, meal.year)
                 return (
-                  <Card key={meal.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
+                  <Card
+                    key={meal.id}
+                    className="border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl bg-white/80 backdrop-blur-sm group"
+                  >
+                    <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{meal.name}</h3>
-                          <p className="text-gray-600">
-                            Week {meal.week}, {meal.year} ({dateRange.start} - {dateRange.end})
+                          <h3 className="font-sf-display font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                          <p className="text-slate-600 font-light">
+                            Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                           </p>
                           {meal.isThisWeek && (
-                            <Badge variant="secondary" className="mt-2">
-                              This Week
+                            <Badge
+                              variant="secondary"
+                              className="mt-3 bg-slate-100 text-slate-700 rounded-full px-3 py-1"
+                            >
+                              Denne uge
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
                             onClick={() => {
                               setEditingMeal(meal)
                               setIsEditDialogOpen(true)
                             }}
+                            className="rounded-full hover:bg-slate-100"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="icon">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full hover:bg-red-50 hover:text-red-600"
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Meal</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{meal.name}"? This action cannot be undone.
+                                <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
+                                <AlertDialogDescription className="text-slate-600">
+                                  Er du sikker på, at du vil slette "{meal.name}"? Dette kan ikke fortrydes.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteMeal(meal.id)}>Delete</AlertDialogAction>
+                                <AlertDialogCancel className="rounded-xl">Annuller</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMeal(meal.id)}
+                                  className="bg-red-600 hover:bg-red-700 rounded-xl"
+                                >
+                                  Slet
+                                </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -479,33 +521,36 @@ export default function MealPlannerApp() {
                 const isCurrentWeek = weekInfo.week === currentWeek && weekInfo.year === currentYear
 
                 return (
-                  <Card key={index} className={`min-h-32 ${isCurrentWeek ? "ring-2 ring-blue-500" : ""}`}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Week {weekInfo.week}, {weekInfo.year}
+                  <Card
+                    key={index}
+                    className={`min-h-32 border-0 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm ${isCurrentWeek ? "ring-2 ring-slate-300" : ""}`}
+                  >
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-slate-900">
+                        Uge {weekInfo.week}
                         <br />
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500 font-light">
                           {dateRange.start} - {dateRange.end}
                         </span>
                         {isCurrentWeek && (
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            Current
+                          <Badge variant="secondary" className="ml-2 text-xs bg-slate-100 text-slate-700 rounded-full">
+                            Nu
                           </Badge>
                         )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {weekMeals.map((meal) => (
                           <div
                             key={meal.id}
-                            className="text-xs p-2 bg-blue-100 text-blue-800 rounded truncate"
+                            className="text-xs p-2 bg-slate-100 text-slate-700 rounded-lg truncate font-medium"
                             title={meal.name}
                           >
                             {meal.name}
                           </div>
                         ))}
-                        {weekMeals.length === 0 && <p className="text-xs text-gray-400">No meals</p>}
+                        {weekMeals.length === 0 && <p className="text-xs text-slate-400 font-light">Ingen måltider</p>}
                       </div>
                     </CardContent>
                   </Card>
@@ -516,58 +561,74 @@ export default function MealPlannerApp() {
 
           <TabsContent value="history" className="space-y-4">
             {historicMeals.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-gray-500">No historic meals yet. Your completed meals will appear here!</p>
+              <Card className="border-0 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-12 text-center">
+                  <p className="text-slate-500 font-light">Ingen historiske måltider endnu</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
-                <div className="text-sm text-gray-600 mb-4">
-                  Showing {historicMeals.length} completed meal{historicMeals.length !== 1 ? "s" : ""}
+                <div className="text-sm text-slate-600 font-light mb-6">
+                  {historicMeals.length} gennemførte måltider
                 </div>
                 {historicMeals.map((meal) => {
                   const dateRange = getWeekDateRange(meal.week, meal.year)
                   return (
-                    <Card key={meal.id} className="hover:shadow-md transition-shadow opacity-75">
-                      <CardContent className="p-4">
+                    <Card
+                      key={meal.id}
+                      className="border-0 shadow-lg rounded-2xl bg-white/60 backdrop-blur-sm group opacity-75 hover:opacity-100 transition-opacity"
+                    >
+                      <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{meal.name}</h3>
-                            <p className="text-gray-600">
-                              Week {meal.week}, {meal.year} ({dateRange.start} - {dateRange.end})
+                            <h3 className="font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                            <p className="text-slate-600 font-light">
+                              Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                             </p>
-                            <Badge variant="outline" className="mt-2">
-                              Completed
+                            <Badge
+                              variant="outline"
+                              className="mt-3 border-slate-300 text-slate-600 rounded-full px-3 py-1"
+                            >
+                              Gennemført
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingMeal(meal)
                                 setIsEditDialogOpen(true)
                               }}
+                              className="rounded-full hover:bg-slate-100"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="icon">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-full hover:bg-red-50 hover:text-red-600"
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Meal</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "{meal.name}"? This action cannot be undone.
+                                  <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-slate-600">
+                                    Er du sikker på, at du vil slette "{meal.name}"? Dette kan ikke fortrydes.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteMeal(meal.id)}>Delete</AlertDialogAction>
+                                  <AlertDialogCancel className="rounded-xl">Annuller</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteMeal(meal.id)}
+                                    className="bg-red-600 hover:bg-red-700 rounded-xl"
+                                  >
+                                    Slet
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -592,99 +653,114 @@ export default function MealPlannerApp() {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent className="rounded-2xl border-0 shadow-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Meal</DialogTitle>
+              <DialogTitle className="text-xl font-sf-display font-light text-slate-900">Rediger måltid</DialogTitle>
             </DialogHeader>
             {editingMeal && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <Label htmlFor="edit-meal-name">Meal Name</Label>
+                  <Label htmlFor="edit-meal-name" className="text-slate-700 font-medium">
+                    Navn
+                  </Label>
                   <Input
                     id="edit-meal-name"
                     value={editingMeal.name}
                     onChange={(e) => setEditingMeal({ ...editingMeal, name: e.target.value })}
-                    placeholder="Enter meal name"
+                    placeholder="Indtast måltidsnavn"
+                    className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label>When do you want this meal?</Label>
+                <div className="space-y-4">
+                  <Label className="text-slate-700 font-medium">Hvornår?</Label>
 
-                  {/* Quick Selection Buttons */}
+                  {/* Quick Selection */}
                   <div className="flex gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeekForEdit(0)}
-                      className={
+                      className={`rounded-full border-slate-200 hover:bg-slate-50 ${
                         editingMeal.week === currentWeek && editingMeal.year === currentYear
-                          ? "bg-blue-100 border-blue-300"
+                          ? "bg-slate-100 border-slate-300"
                           : ""
-                      }
+                      }`}
                     >
-                      This Week
+                      Denne uge
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setQuickWeekForEdit(1)}>
-                      Next Week
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeekForEdit(1)}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      Næste uge
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowEditAdvancedDatePicker(!showEditAdvancedDatePicker)}
+                      className="rounded-full text-slate-600 hover:bg-slate-50"
                     >
-                      {showEditAdvancedDatePicker ? "Hide" : "More"} Options
+                      <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </div>
 
-                  {/* Current Selection Display */}
-                  <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                    Selected: Week {editingMeal.week}, {editingMeal.year}
-                    <span className="ml-2">
+                  {/* Current Selection */}
+                  <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl">
+                    Valgt: Uge {editingMeal.week}, {editingMeal.year}
+                    <span className="ml-2 text-slate-500">
                       ({getWeekDateRange(editingMeal.week, editingMeal.year).start} -{" "}
                       {getWeekDateRange(editingMeal.week, editingMeal.year).end})
                     </span>
                   </div>
 
-                  {/* Advanced Date Picker */}
+                  {/* Advanced Options */}
                   {showEditAdvancedDatePicker && (
-                    <div className="space-y-3 border-t pt-3">
+                    <div className="space-y-4 border-t border-slate-100 pt-4">
                       <div>
-                        <Label htmlFor="edit-date-picker">Pick a specific date</Label>
+                        <Label htmlFor="edit-date-picker" className="text-slate-700">
+                          Vælg dato
+                        </Label>
                         <Input
                           id="edit-date-picker"
                           type="date"
                           defaultValue={getDateFromWeekYear(editingMeal.week, editingMeal.year)}
                           onChange={(e) => handleEditDatePickerChange(e.target.value)}
-                          className="mt-1"
+                          className="mt-2 border-slate-200 rounded-xl"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          The meal will be planned for the week containing this date
+                        <p className="text-xs text-slate-500 mt-1">
+                          Måltidet planlægges for ugen der indeholder denne dato
                         </p>
                       </div>
 
-                      <div className="text-sm text-gray-600">Or select manually:</div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="edit-meal-week">Week</Label>
+                          <Label htmlFor="edit-meal-week" className="text-slate-700">
+                            Uge
+                          </Label>
                           <Select
                             value={editingMeal.week.toString()}
                             onValueChange={(value) => setEditingMeal({ ...editingMeal, week: Number.parseInt(value) })}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>{generateWeekOptions()}</SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="edit-meal-year">Year</Label>
+                          <Label htmlFor="edit-meal-year" className="text-slate-700">
+                            År
+                          </Label>
                           <Select
                             value={editingMeal.year.toString()}
                             onValueChange={(value) => setEditingMeal({ ...editingMeal, year: Number.parseInt(value) })}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>{generateYearOptions()}</SelectContent>
@@ -694,8 +770,8 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
-                <Button onClick={updateMeal} className="w-full">
-                  Update Meal
+                <Button onClick={updateMeal} className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3">
+                  Opdater måltid
                 </Button>
               </div>
             )}
