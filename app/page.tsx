@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
 import { da } from "date-fns/locale"
-import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Cloud, CloudOff } from "lucide-react"
+import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -37,7 +37,6 @@ export default function MealPlannerApp() {
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [isCloudStorage, setIsCloudStorage] = useState(false)
   const [newMealName, setNewMealName] = useState("")
   const [newMealWeek, setNewMealWeek] = useState("")
   const [newMealYear, setNewMealYear] = useState("")
@@ -57,13 +56,6 @@ export default function MealPlannerApp() {
       try {
         setLoading(true)
         const fetchedMeals = await fetchMeals()
-
-        // Check if we're using cloud storage by testing if we have environment variables
-        const hasCloudStorage =
-          typeof window !== "undefined" &&
-          window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-        setIsCloudStorage(hasCloudStorage)
 
         // Update isThisWeek property based on current date
         const updatedMeals = fetchedMeals.map((meal) => ({
@@ -348,21 +340,6 @@ export default function MealPlannerApp() {
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
           <p className="text-slate-600 font-sf-text font-light">Planlæg dine måltider efter uge</p>
-
-          {/* Storage Status */}
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {isCloudStorage ? (
-              <>
-                <Cloud className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-600">Cloud storage aktiv</span>
-              </>
-            ) : (
-              <>
-                <CloudOff className="w-4 h-4 text-amber-600" />
-                <span className="text-sm text-amber-600">Lokal lagring</span>
-              </>
-            )}
-          </div>
 
           {saving && (
             <div className="flex items-center justify-center gap-2 mt-2">
