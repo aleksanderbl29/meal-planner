@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
 import { da } from "date-fns/locale"
-import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal } from "lucide-react"
+import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Cloud, CloudOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { fetchMeals, createMeal, editMeal, removeMeal } from "./actions"
 
 interface Meal {
   id: string
@@ -34,6 +35,9 @@ interface Meal {
 
 export default function MealPlannerApp() {
   const [meals, setMeals] = useState<Meal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [isCloudStorage, setIsCloudStorage] = useState(false)
   const [newMealName, setNewMealName] = useState("")
   const [newMealWeek, setNewMealWeek] = useState("")
   const [newMealYear, setNewMealYear] = useState("")
@@ -47,17 +51,51 @@ export default function MealPlannerApp() {
   const currentWeek = getWeek(new Date())
   const currentYear = getYear(new Date())
 
-  // Load meals from localStorage on component mount
+  // Load meals on component mount
   useEffect(() => {
-    const savedMeals = localStorage.getItem("meals")
-    if (savedMeals) {
-      setMeals(JSON.parse(savedMeals))
-    }
-  }, [])
+    const loadMeals = async () => {
+      try {
+        setLoading(true)
+        const fetchedMeals = await fetchMeals()
 
-  // Save meals to localStorage whenever meals change
+        // Check if we're using cloud storage by testing if we have environment variables
+        const hasCloudStorage =
+          typeof window !== "undefined" &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+        setIsCloudStorage(hasCloudStorage)
+
+        // Update isThisWeek property based on current date
+        const updatedMeals = fetchedMeals.map((meal) => ({
+          ...meal,
+          isThisWeek: meal.week === currentWeek && meal.year === currentYear,
+        }))
+        setMeals(updatedMeals)
+      } catch (error) {
+        console.error("Failed to load meals:", error)
+        // Fallback to localStorage if server actions fail
+        const localMeals = localStorage.getItem("meals")
+        if (localMeals) {
+          const parsedMeals = JSON.parse(localMeals)
+          const updatedMeals = parsedMeals.map((meal: Meal) => ({
+            ...meal,
+            isThisWeek: meal.week === currentWeek && meal.year === currentYear,
+          }))
+          setMeals(updatedMeals)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadMeals()
+  }, [currentWeek, currentYear])
+
+  // Backup to localStorage whenever meals change
   useEffect(() => {
-    localStorage.setItem("meals", JSON.stringify(meals))
+    if (meals.length > 0) {
+      localStorage.setItem("meals", JSON.stringify(meals))
+    }
   }, [meals])
 
   // Set default values for new meal
@@ -66,46 +104,87 @@ export default function MealPlannerApp() {
     if (!newMealYear) setNewMealYear(currentYear.toString())
   }, [currentWeek, currentYear, newMealWeek, newMealYear])
 
-  const addMeal = () => {
-    if (!newMealName.trim() || !newMealWeek || !newMealYear) return
+  const addMeal = async () => {
+    if (!newMealName.trim() || !newMealWeek || !newMealYear || saving) return
 
-    const week = Number.parseInt(newMealWeek)
-    const year = Number.parseInt(newMealYear)
+    try {
+      setSaving(true)
+      const week = Number.parseInt(newMealWeek)
+      const year = Number.parseInt(newMealYear)
 
-    const meal: Meal = {
-      id: Date.now().toString(),
-      name: newMealName.trim(),
-      week,
-      year,
-      isThisWeek: week === currentWeek && year === currentYear,
+      const newMeal = await createMeal({
+        name: newMealName.trim(),
+        week,
+        year,
+        isThisWeek: week === currentWeek && year === currentYear,
+      })
+
+      setMeals((prev) => [...prev, newMeal])
+      setNewMealName("")
+      setNewMealWeek(currentWeek.toString())
+      setNewMealYear(currentYear.toString())
+      setIsAddDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to add meal:", error)
+      // Fallback to local-only operation
+      const localMeal: Meal = {
+        id: Date.now().toString(),
+        name: newMealName.trim(),
+        week: Number.parseInt(newMealWeek),
+        year: Number.parseInt(newMealYear),
+        isThisWeek: Number.parseInt(newMealWeek) === currentWeek && Number.parseInt(newMealYear) === currentYear,
+      }
+      setMeals((prev) => [...prev, localMeal])
+      setNewMealName("")
+      setNewMealWeek(currentWeek.toString())
+      setNewMealYear(currentYear.toString())
+      setIsAddDialogOpen(false)
+    } finally {
+      setSaving(false)
     }
-
-    setMeals((prev) => [...prev, meal])
-    setNewMealName("")
-    setNewMealWeek(currentWeek.toString())
-    setNewMealYear(currentYear.toString())
-    setIsAddDialogOpen(false)
   }
 
-  const updateMeal = () => {
-    if (!editingMeal || !editingMeal.name.trim()) return
+  const updateMeal = async () => {
+    if (!editingMeal || !editingMeal.name.trim() || saving) return
 
-    setMeals((prev) =>
-      prev.map((meal) =>
-        meal.id === editingMeal.id
-          ? {
-              ...editingMeal,
-              isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
-            }
-          : meal,
-      ),
-    )
-    setEditingMeal(null)
-    setIsEditDialogOpen(false)
+    try {
+      setSaving(true)
+      const updatedMeal = {
+        ...editingMeal,
+        isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
+      }
+
+      await editMeal(updatedMeal)
+      setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
+      setEditingMeal(null)
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to update meal:", error)
+      // Fallback to local-only operation
+      const updatedMeal = {
+        ...editingMeal,
+        isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
+      }
+      setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
+      setEditingMeal(null)
+      setIsEditDialogOpen(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const deleteMeal = (id: string) => {
-    setMeals((prev) => prev.filter((meal) => meal.id !== id))
+  const deleteMeal = async (id: string) => {
+    try {
+      setSaving(true)
+      await removeMeal(id)
+      setMeals((prev) => prev.filter((meal) => meal.id !== id))
+    } catch (error) {
+      console.error("Failed to delete meal:", error)
+      // Fallback to local-only operation
+      setMeals((prev) => prev.filter((meal) => meal.id !== id))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getWeekKey = (week: number, year: number) => `${year}-${week}`
@@ -251,6 +330,17 @@ export default function MealPlannerApp() {
     return format(startOfTargetWeek, "yyyy-MM-dd")
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-slate-600" />
+          <p className="text-slate-600 font-light">Indlæser måltider...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -258,6 +348,28 @@ export default function MealPlannerApp() {
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
           <p className="text-slate-600 font-sf-text font-light">Planlæg dine måltider efter uge</p>
+
+          {/* Storage Status */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {isCloudStorage ? (
+              <>
+                <Cloud className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-600">Cloud storage aktiv</span>
+              </>
+            ) : (
+              <>
+                <CloudOff className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-amber-600">Lokal lagring</span>
+              </>
+            )}
+          </div>
+
+          {saving && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              <span className="text-sm text-slate-500">Gemmer...</span>
+            </div>
+          )}
         </div>
 
         {/* Action Bar */}
@@ -272,7 +384,10 @@ export default function MealPlannerApp() {
             }}
           >
             <DialogTrigger asChild>
-              <Button className="bg-slate-900 hover:bg-slate-800 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6">
+              <Button
+                className="bg-slate-900 hover:bg-slate-800 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
+                disabled={saving}
+              >
                 <Plus className="w-4 h-4" />
                 Tilføj måltid
               </Button>
@@ -292,6 +407,7 @@ export default function MealPlannerApp() {
                     onChange={(e) => setNewMealName(e.target.value)}
                     placeholder="Indtast måltidsnavn"
                     className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
+                    disabled={saving}
                   />
                 </div>
                 <div className="space-y-4">
@@ -304,6 +420,7 @@ export default function MealPlannerApp() {
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeek(0)}
+                      disabled={saving}
                       className={`rounded-full border-slate-200 hover:bg-slate-50 ${
                         newMealWeek === currentWeek.toString() && newMealYear === currentYear.toString()
                           ? "bg-slate-100 border-slate-300"
@@ -317,6 +434,7 @@ export default function MealPlannerApp() {
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeek(1)}
+                      disabled={saving}
                       className="rounded-full border-slate-200 hover:bg-slate-50"
                     >
                       Næste uge
@@ -326,6 +444,7 @@ export default function MealPlannerApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowAdvancedDatePicker(!showAdvancedDatePicker)}
+                      disabled={saving}
                       className="rounded-full text-slate-600 hover:bg-slate-50"
                     >
                       <MoreHorizontal className="w-4 h-4" />
@@ -355,6 +474,7 @@ export default function MealPlannerApp() {
                           type="date"
                           onChange={(e) => handleDatePickerChange(e.target.value)}
                           className="mt-2 border-slate-200 rounded-xl"
+                          disabled={saving}
                         />
                         <p className="text-xs text-slate-500 mt-1">
                           Måltidet planlægges for ugen der indeholder denne dato
@@ -366,7 +486,7 @@ export default function MealPlannerApp() {
                           <Label htmlFor="meal-week" className="text-slate-700">
                             Uge
                           </Label>
-                          <Select value={newMealWeek} onValueChange={setNewMealWeek}>
+                          <Select value={newMealWeek} onValueChange={setNewMealWeek} disabled={saving}>
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue placeholder="Vælg uge" />
                             </SelectTrigger>
@@ -377,7 +497,7 @@ export default function MealPlannerApp() {
                           <Label htmlFor="meal-year" className="text-slate-700">
                             År
                           </Label>
-                          <Select value={newMealYear} onValueChange={setNewMealYear}>
+                          <Select value={newMealYear} onValueChange={setNewMealYear} disabled={saving}>
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue placeholder="Vælg år" />
                             </SelectTrigger>
@@ -388,8 +508,19 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
-                <Button onClick={addMeal} className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3">
-                  Tilføj måltid
+                <Button
+                  onClick={addMeal}
+                  className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Gemmer...
+                    </>
+                  ) : (
+                    "Tilføj måltid"
+                  )}
                 </Button>
               </div>
             </DialogContent>
@@ -407,6 +538,7 @@ export default function MealPlannerApp() {
           </Select>
         </div>
 
+        {/* Rest of the component remains the same... */}
         {/* Tabs */}
         <Tabs defaultValue="list" className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-slate-100 rounded-2xl p-1 mb-8">
@@ -473,6 +605,7 @@ export default function MealPlannerApp() {
                               setIsEditDialogOpen(true)
                             }}
                             className="rounded-full hover:bg-slate-100"
+                            disabled={saving}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -482,6 +615,7 @@ export default function MealPlannerApp() {
                                 variant="ghost"
                                 size="icon"
                                 className="rounded-full hover:bg-red-50 hover:text-red-600"
+                                disabled={saving}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -498,8 +632,16 @@ export default function MealPlannerApp() {
                                 <AlertDialogAction
                                   onClick={() => deleteMeal(meal.id)}
                                   className="bg-red-600 hover:bg-red-700 rounded-xl"
+                                  disabled={saving}
                                 >
-                                  Slet
+                                  {saving ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                      Sletter...
+                                    </>
+                                  ) : (
+                                    "Slet"
+                                  )}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -601,6 +743,7 @@ export default function MealPlannerApp() {
                                 setIsEditDialogOpen(true)
                               }}
                               className="rounded-full hover:bg-slate-100"
+                              disabled={saving}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -610,6 +753,7 @@ export default function MealPlannerApp() {
                                   variant="ghost"
                                   size="icon"
                                   className="rounded-full hover:bg-red-50 hover:text-red-600"
+                                  disabled={saving}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -626,8 +770,16 @@ export default function MealPlannerApp() {
                                   <AlertDialogAction
                                     onClick={() => deleteMeal(meal.id)}
                                     className="bg-red-600 hover:bg-red-700 rounded-xl"
+                                    disabled={saving}
                                   >
-                                    Slet
+                                    {saving ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Sletter...
+                                      </>
+                                    ) : (
+                                      "Slet"
+                                    )}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -669,6 +821,7 @@ export default function MealPlannerApp() {
                     onChange={(e) => setEditingMeal({ ...editingMeal, name: e.target.value })}
                     placeholder="Indtast måltidsnavn"
                     className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
+                    disabled={saving}
                   />
                 </div>
                 <div className="space-y-4">
@@ -681,6 +834,7 @@ export default function MealPlannerApp() {
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeekForEdit(0)}
+                      disabled={saving}
                       className={`rounded-full border-slate-200 hover:bg-slate-50 ${
                         editingMeal.week === currentWeek && editingMeal.year === currentYear
                           ? "bg-slate-100 border-slate-300"
@@ -694,6 +848,7 @@ export default function MealPlannerApp() {
                       variant="outline"
                       size="sm"
                       onClick={() => setQuickWeekForEdit(1)}
+                      disabled={saving}
                       className="rounded-full border-slate-200 hover:bg-slate-50"
                     >
                       Næste uge
@@ -703,6 +858,7 @@ export default function MealPlannerApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowEditAdvancedDatePicker(!showEditAdvancedDatePicker)}
+                      disabled={saving}
                       className="rounded-full text-slate-600 hover:bg-slate-50"
                     >
                       <MoreHorizontal className="w-4 h-4" />
@@ -731,6 +887,7 @@ export default function MealPlannerApp() {
                           defaultValue={getDateFromWeekYear(editingMeal.week, editingMeal.year)}
                           onChange={(e) => handleEditDatePickerChange(e.target.value)}
                           className="mt-2 border-slate-200 rounded-xl"
+                          disabled={saving}
                         />
                         <p className="text-xs text-slate-500 mt-1">
                           Måltidet planlægges for ugen der indeholder denne dato
@@ -745,6 +902,7 @@ export default function MealPlannerApp() {
                           <Select
                             value={editingMeal.week.toString()}
                             onValueChange={(value) => setEditingMeal({ ...editingMeal, week: Number.parseInt(value) })}
+                            disabled={saving}
                           >
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue />
@@ -759,6 +917,7 @@ export default function MealPlannerApp() {
                           <Select
                             value={editingMeal.year.toString()}
                             onValueChange={(value) => setEditingMeal({ ...editingMeal, year: Number.parseInt(value) })}
+                            disabled={saving}
                           >
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue />
@@ -770,8 +929,19 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
-                <Button onClick={updateMeal} className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3">
-                  Opdater måltid
+                <Button
+                  onClick={updateMeal}
+                  className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Opdaterer...
+                    </>
+                  ) : (
+                    "Opdater måltid"
+                  )}
                 </Button>
               </div>
             )}
