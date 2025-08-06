@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { SignedIn, SignedOut } from "@clerk/nextjs"
 import { fetchMeals, createMeal, editMeal, removeMeal } from "./actions"
 
 interface Meal {
@@ -402,19 +403,20 @@ export default function MealPlannerApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
-          <p className="text-slate-600 font-sf-text font-light">Hvad skal vi have at spise i aften?</p>
+      <SignedIn>
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-12 text-center">
+            <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
+            <p className="text-slate-600 font-sf-text font-light">Hvad skal vi have at spise i aften?</p>
 
-          {saving && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-              <span className="text-sm text-slate-500">Gemmer...</span>
-            </div>
-          )}
-        </div>
+            {saving && (
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                <span className="text-sm text-slate-500">Gemmer...</span>
+              </div>
+            )}
+          </div>
 
         {/* Action Bar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -984,6 +986,19 @@ export default function MealPlannerApp() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </SignedIn>
+
+    <SignedOut>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-6 tracking-tight">Måltidsplanlægger</h1>
+          <p className="text-slate-600 font-sf-text font-light mb-8">Log ind for at komme i gang med at planlægge dine måltider</p>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">Du skal være logget ind for at bruge applikationen</p>
+          </div>
+        </div>
+      </div>
+    </SignedOut>
+  </div>
   )
 }
