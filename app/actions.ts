@@ -1,10 +1,17 @@
 "use server"
 
+import { auth } from "@clerk/nextjs/server"
 import { getMeals, addMeal, updateMeal, deleteMeal, type Meal } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
 
 export async function fetchMeals() {
   try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      throw new Error("Authentication required")
+    }
+
     return await getMeals()
   } catch (error) {
     console.error("Error in fetchMeals:", error)
@@ -14,6 +21,12 @@ export async function fetchMeals() {
 
 export async function createMeal(meal: Omit<Meal, "id">) {
   try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      throw new Error("Authentication required")
+    }
+
     const newMeal: Meal = {
       ...meal,
       id: Date.now().toString(),
@@ -30,6 +43,12 @@ export async function createMeal(meal: Omit<Meal, "id">) {
 
 export async function editMeal(meal: Meal) {
   try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      throw new Error("Authentication required")
+    }
+
     await updateMeal(meal)
     revalidatePath("/")
     return meal
@@ -41,6 +60,12 @@ export async function editMeal(meal: Meal) {
 
 export async function removeMeal(mealId: string) {
   try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      throw new Error("Authentication required")
+    }
+
     await deleteMeal(mealId)
     revalidatePath("/")
   } catch (error) {

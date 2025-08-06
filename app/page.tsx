@@ -67,15 +67,22 @@ export default function MealPlannerApp() {
         setMeals(updatedMeals)
       } catch (error) {
         console.error("Failed to load meals:", error)
-        // Fallback to localStorage if server actions fail
-        const localMeals = localStorage.getItem("meals")
-        if (localMeals) {
-          const parsedMeals = JSON.parse(localMeals)
-          const updatedMeals = parsedMeals.map((meal: Meal) => ({
-            ...meal,
-            isThisWeek: meal.week === currentWeek && meal.year === currentYear,
-          }))
-          setMeals(updatedMeals)
+        
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message.includes("Authentication required")) {
+          console.log("User not authenticated, showing empty state")
+          setMeals([])
+        } else {
+          // Fallback to localStorage if server actions fail for other reasons
+          const localMeals = localStorage.getItem("meals")
+          if (localMeals) {
+            const parsedMeals = JSON.parse(localMeals)
+            const updatedMeals = parsedMeals.map((meal: Meal) => ({
+              ...meal,
+              isThisWeek: meal.week === currentWeek && meal.year === currentYear,
+            }))
+            setMeals(updatedMeals)
+          }
         }
       } finally {
         setLoading(false)
@@ -121,20 +128,28 @@ export default function MealPlannerApp() {
       setIsAddDialogOpen(false)
     } catch (error) {
       console.error("Failed to add meal:", error)
-      // Fallback to local-only operation
-      const localMeal: Meal = {
-        id: Date.now().toString(),
-        name: newMealName.trim(),
-        week: Number.parseInt(newMealWeek),
-        year: Number.parseInt(newMealYear),
-        isThisWeek: Number.parseInt(newMealWeek) === currentWeek && Number.parseInt(newMealYear) === currentYear,
-        eaten: false,
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes("Authentication required")) {
+        console.log("User not authenticated, cannot add meal")
+        // Don't add meal locally if user is not authenticated
+        return
+      } else {
+        // Fallback to local-only operation for other errors
+        const localMeal: Meal = {
+          id: Date.now().toString(),
+          name: newMealName.trim(),
+          week: Number.parseInt(newMealWeek),
+          year: Number.parseInt(newMealYear),
+          isThisWeek: Number.parseInt(newMealWeek) === currentWeek && Number.parseInt(newMealYear) === currentYear,
+          eaten: false,
+        }
+        setMeals((prev) => [...prev, localMeal])
+        setNewMealName("")
+        setNewMealWeek(currentWeek.toString())
+        setNewMealYear(currentYear.toString())
+        setIsAddDialogOpen(false)
       }
-      setMeals((prev) => [...prev, localMeal])
-      setNewMealName("")
-      setNewMealWeek(currentWeek.toString())
-      setNewMealYear(currentYear.toString())
-      setIsAddDialogOpen(false)
     } finally {
       setSaving(false)
     }
@@ -156,14 +171,22 @@ export default function MealPlannerApp() {
       setIsEditDialogOpen(false)
     } catch (error) {
       console.error("Failed to update meal:", error)
-      // Fallback to local-only operation
-      const updatedMeal = {
-        ...editingMeal,
-        isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes("Authentication required")) {
+        console.log("User not authenticated, cannot update meal")
+        // Don't update meal locally if user is not authenticated
+        return
+      } else {
+        // Fallback to local-only operation for other errors
+        const updatedMeal = {
+          ...editingMeal,
+          isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
+        }
+        setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
+        setEditingMeal(null)
+        setIsEditDialogOpen(false)
       }
-      setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
-      setEditingMeal(null)
-      setIsEditDialogOpen(false)
     } finally {
       setSaving(false)
     }
@@ -176,8 +199,16 @@ export default function MealPlannerApp() {
       setMeals((prev) => prev.filter((meal) => meal.id !== id))
     } catch (error) {
       console.error("Failed to delete meal:", error)
-      // Fallback to local-only operation
-      setMeals((prev) => prev.filter((meal) => meal.id !== id))
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes("Authentication required")) {
+        console.log("User not authenticated, cannot delete meal")
+        // Don't delete meal locally if user is not authenticated
+        return
+      } else {
+        // Fallback to local-only operation for other errors
+        setMeals((prev) => prev.filter((meal) => meal.id !== id))
+      }
     } finally {
       setSaving(false)
     }
@@ -201,17 +232,25 @@ export default function MealPlannerApp() {
       setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
     } catch (error) {
       console.error("Failed to mark meal as eaten:", error)
-      // Fallback to local-only operation
-      const mealToUpdate = meals.find((meal) => meal.id === id)
-      if (!mealToUpdate) return
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes("Authentication required")) {
+        console.log("User not authenticated, cannot mark meal as eaten")
+        // Don't update meal locally if user is not authenticated
+        return
+      } else {
+        // Fallback to local-only operation for other errors
+        const mealToUpdate = meals.find((meal) => meal.id === id)
+        if (!mealToUpdate) return
 
-      const updatedMeal = {
-        ...mealToUpdate,
-        week: currentWeek,
-        year: currentYear,
-        eaten: true,
+        const updatedMeal = {
+          ...mealToUpdate,
+          week: currentWeek,
+          year: currentYear,
+          eaten: true,
+        }
+        setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
       }
-      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
     } finally {
       setSaving(false)
     }
@@ -235,17 +274,25 @@ export default function MealPlannerApp() {
       setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
     } catch (error) {
       console.error("Failed to promote meal to current week:", error)
-      // Fallback to local-only operation
-      const mealToUpdate = meals.find((meal) => meal.id === id)
-      if (!mealToUpdate) return
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes("Authentication required")) {
+        console.log("User not authenticated, cannot promote meal to current week")
+        // Don't update meal locally if user is not authenticated
+        return
+      } else {
+        // Fallback to local-only operation for other errors
+        const mealToUpdate = meals.find((meal) => meal.id === id)
+        if (!mealToUpdate) return
 
-      const updatedMeal = {
-        ...mealToUpdate,
-        week: currentWeek,
-        year: currentYear,
-        eaten: false,
+        const updatedMeal = {
+          ...mealToUpdate,
+          week: currentWeek,
+          year: currentYear,
+          eaten: false,
+        }
+        setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
       }
-      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
     } finally {
       setSaving(false)
     }
