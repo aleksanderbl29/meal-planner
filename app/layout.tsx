@@ -4,7 +4,7 @@ import "../styles/globals.css"
 
 export const metadata: Metadata = {
   title: "Måltidsplanlægger",
-  description: "Planlæg dine måltider efter uge",
+  description: "Hvad skal vi have at spise i aften?",
   generator: "v0.dev",
 }
 

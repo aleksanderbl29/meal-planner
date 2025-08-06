@@ -4,6 +4,7 @@ export interface Meal {
   week: number
   year: number
   isThisWeek: boolean
+  eaten?: boolean
 }
 
 const MEALS_KEY = "meals"

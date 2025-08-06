@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
 import { da } from "date-fns/locale"
-import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2 } from "lucide-react"
+import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Check, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -31,6 +31,7 @@ interface Meal {
   week: number
   year: number
   isThisWeek: boolean
+  eaten?: boolean
 }
 
 export default function MealPlannerApp() {
@@ -109,6 +110,7 @@ export default function MealPlannerApp() {
         week,
         year,
         isThisWeek: week === currentWeek && year === currentYear,
+        eaten: false,
       })
 
       setMeals((prev) => [...prev, newMeal])
@@ -125,6 +127,7 @@ export default function MealPlannerApp() {
         week: Number.parseInt(newMealWeek),
         year: Number.parseInt(newMealYear),
         isThisWeek: Number.parseInt(newMealWeek) === currentWeek && Number.parseInt(newMealYear) === currentYear,
+        eaten: false,
       }
       setMeals((prev) => [...prev, localMeal])
       setNewMealName("")
@@ -179,6 +182,74 @@ export default function MealPlannerApp() {
     }
   }
 
+  const markAsEaten = async (id: string) => {
+    try {
+      setSaving(true)
+      const mealToUpdate = meals.find((meal) => meal.id === id)
+      if (!mealToUpdate) return
+
+      // Move the meal to the current week and mark as eaten
+      const updatedMeal = {
+        ...mealToUpdate,
+        week: currentWeek,
+        year: currentYear,
+        eaten: true,
+      }
+
+      await editMeal(updatedMeal)
+      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
+    } catch (error) {
+      console.error("Failed to mark meal as eaten:", error)
+      // Fallback to local-only operation
+      const mealToUpdate = meals.find((meal) => meal.id === id)
+      if (!mealToUpdate) return
+
+      const updatedMeal = {
+        ...mealToUpdate,
+        week: currentWeek,
+        year: currentYear,
+        eaten: true,
+      }
+      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const promoteToCurrentWeek = async (id: string) => {
+    try {
+      setSaving(true)
+      const mealToUpdate = meals.find((meal) => meal.id === id)
+      if (!mealToUpdate) return
+
+      // Move the meal to the current week and clear eaten status
+      const updatedMeal = {
+        ...mealToUpdate,
+        week: currentWeek,
+        year: currentYear,
+        eaten: false,
+      }
+
+      await editMeal(updatedMeal)
+      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
+    } catch (error) {
+      console.error("Failed to promote meal to current week:", error)
+      // Fallback to local-only operation
+      const mealToUpdate = meals.find((meal) => meal.id === id)
+      if (!mealToUpdate) return
+
+      const updatedMeal = {
+        ...mealToUpdate,
+        week: currentWeek,
+        year: currentYear,
+        eaten: false,
+      }
+      setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const getWeekKey = (week: number, year: number) => `${year}-${week}`
   const getCurrentWeekKey = () => getWeekKey(currentWeek, currentYear)
 
@@ -188,6 +259,7 @@ export default function MealPlannerApp() {
       const currentWeekKey = getCurrentWeekKey()
       return mealWeekKey >= currentWeekKey
     })
+    .filter((meal) => !meal.eaten) // Exclude eaten meals from upcoming
     .filter((meal) => filter === "all" || meal.isThisWeek)
     .sort((a, b) => {
       if (a.year !== b.year) return a.year - b.year
@@ -195,11 +267,6 @@ export default function MealPlannerApp() {
     })
 
   const historicMeals = meals
-    .filter((meal) => {
-      const mealWeekKey = getWeekKey(meal.week, meal.year)
-      const currentWeekKey = getCurrentWeekKey()
-      return mealWeekKey < currentWeekKey
-    })
     .sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year
       return b.week - a.week
@@ -339,7 +406,7 @@ export default function MealPlannerApp() {
         {/* Header */}
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-sf-display font-light text-slate-900 mb-3 tracking-tight">Måltidsplanlægger</h1>
-          <p className="text-slate-600 font-sf-text font-light">Planlæg dine måltider efter uge</p>
+          <p className="text-slate-600 font-sf-text font-light">Hvad skal vi have at spise i aften?</p>
 
           {saving && (
             <div className="flex items-center justify-center gap-2 mt-2">
@@ -369,7 +436,7 @@ export default function MealPlannerApp() {
                 Tilføj måltid
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl border-0 shadow-2xl">
+            <DialogContent className="rounded-2xl border-0 shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle className="text-xl font-sf-display font-light text-slate-900">Nyt måltid</DialogTitle>
               </DialogHeader>
@@ -385,6 +452,7 @@ export default function MealPlannerApp() {
                     placeholder="Indtast måltidsnavn"
                     className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
                     disabled={saving}
+                    autoFocus={false}
                   />
                 </div>
                 <div className="space-y-4">
@@ -555,7 +623,11 @@ export default function MealPlannerApp() {
                 return (
                   <Card
                     key={meal.id}
-                    className="border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl bg-white/80 backdrop-blur-sm group"
+                    className="border-0 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl bg-white/80 backdrop-blur-sm group cursor-pointer"
+                    onClick={() => {
+                      setEditingMeal(meal)
+                      setIsEditDialogOpen(true)
+                    }}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
@@ -573,56 +645,20 @@ export default function MealPlannerApp() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              setEditingMeal(meal)
-                              setIsEditDialogOpen(true)
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              markAsEaten(meal.id)
                             }}
-                            className="rounded-full hover:bg-slate-100"
+                            className="rounded-full hover:bg-green-100 hover:text-green-700"
                             disabled={saving}
+                            title="Marker som spist"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Check className="w-4 h-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-full hover:bg-red-50 hover:text-red-600"
-                                disabled={saving}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
-                                <AlertDialogDescription className="text-slate-600">
-                                  Er du sikker på, at du vil slette "{meal.name}"? Dette kan ikke fortrydes.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-xl">Annuller</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteMeal(meal.id)}
-                                  className="bg-red-600 hover:bg-red-700 rounded-xl"
-                                  disabled={saving}
-                                >
-                                  {saving ? (
-                                    <>
-                                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                      Sletter...
-                                    </>
-                                  ) : (
-                                    "Slet"
-                                  )}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
                         </div>
                       </div>
                     </CardContent>
@@ -688,14 +724,18 @@ export default function MealPlannerApp() {
             ) : (
               <div className="space-y-4">
                 <div className="text-sm text-slate-600 font-light mb-6">
-                  {historicMeals.length} gennemførte måltider
+                  {historicMeals.length} måltider i alt
                 </div>
                 {historicMeals.map((meal) => {
                   const dateRange = getWeekDateRange(meal.week, meal.year)
                   return (
                     <Card
                       key={meal.id}
-                      className="border-0 shadow-lg rounded-2xl bg-white/60 backdrop-blur-sm group opacity-75 hover:opacity-100 transition-opacity"
+                      className="border-0 shadow-lg rounded-2xl bg-white/60 backdrop-blur-sm group opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={() => {
+                        setEditingMeal(meal)
+                        setIsEditDialogOpen(true)
+                      }}
                     >
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
@@ -706,61 +746,36 @@ export default function MealPlannerApp() {
                             </p>
                             <Badge
                               variant="outline"
-                              className="mt-3 border-slate-300 text-slate-600 rounded-full px-3 py-1"
+                              className={`mt-3 rounded-full px-3 py-1 ${
+                                meal.week < currentWeek || (meal.week === currentWeek && meal.year < currentYear)
+                                  ? "border-green-300 text-green-700 bg-green-50"
+                                  : meal.week === currentWeek && meal.year === currentYear
+                                  ? "border-blue-300 text-blue-700 bg-blue-50"
+                                  : "border-slate-300 text-slate-600"
+                              }`}
                             >
-                              Gennemført
+                              {meal.week < currentWeek || (meal.week === currentWeek && meal.year < currentYear)
+                                ? "Gennemført"
+                                : meal.week === currentWeek && meal.year === currentYear
+                                ? "Denne uge"
+                                : "Planlagt"
+                              }
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex flex-col sm:flex-row items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
-                                setEditingMeal(meal)
-                                setIsEditDialogOpen(true)
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                promoteToCurrentWeek(meal.id)
                               }}
-                              className="rounded-full hover:bg-slate-100"
+                              className="rounded-full hover:bg-blue-100 hover:text-blue-700"
                               disabled={saving}
+                              title="Flyt til denne uge"
                             >
-                              <Edit className="w-4 h-4" />
+                              <ArrowUp className="w-4 h-4" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-full hover:bg-red-50 hover:text-red-600"
-                                  disabled={saving}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-slate-600">
-                                    Er du sikker på, at du vil slette "{meal.name}"? Dette kan ikke fortrydes.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="rounded-xl">Annuller</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteMeal(meal.id)}
-                                    className="bg-red-600 hover:bg-red-700 rounded-xl"
-                                    disabled={saving}
-                                  >
-                                    {saving ? (
-                                      <>
-                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                        Sletter...
-                                      </>
-                                    ) : (
-                                      "Slet"
-                                    )}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
                           </div>
                         </div>
                       </CardContent>
@@ -782,7 +797,7 @@ export default function MealPlannerApp() {
             }
           }}
         >
-          <DialogContent className="rounded-2xl border-0 shadow-2xl">
+          <DialogContent className="rounded-2xl border-0 shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="text-xl font-sf-display font-light text-slate-900">Rediger måltid</DialogTitle>
             </DialogHeader>
@@ -799,6 +814,7 @@ export default function MealPlannerApp() {
                     placeholder="Indtast måltidsnavn"
                     className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20"
                     disabled={saving}
+                    autoFocus={false}
                   />
                 </div>
                 <div className="space-y-4">
@@ -906,20 +922,63 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
-                <Button
-                  onClick={updateMeal}
-                  className="w-full bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Opdaterer...
-                    </>
-                  ) : (
-                    "Opdater måltid"
-                  )}
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={updateMeal}
+                    className="flex-1 bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Opdaterer...
+                      </>
+                    ) : (
+                      "Opdater måltid"
+                    )}
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="px-6 border-red-200 text-red-600 hover:bg-red-50 rounded-xl"
+                        disabled={saving}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600">
+                          Er du sikker på, at du vil slette "{editingMeal?.name}"? Dette kan ikke fortrydes.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Annuller</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (editingMeal) {
+                              deleteMeal(editingMeal.id)
+                              setIsEditDialogOpen(false)
+                            }
+                          }}
+                          className="bg-red-600 hover:bg-red-700 rounded-xl"
+                          disabled={saving}
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Sletter...
+                            </>
+                          ) : (
+                            "Slet"
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             )}
           </DialogContent>
