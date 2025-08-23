@@ -5,6 +5,7 @@ export interface Meal {
   year: number
   isThisWeek: boolean
   eaten?: boolean
+  category?: "hurtig" | "mellem" | "langsom"
 }
 
 const MEALS_KEY = "meals"

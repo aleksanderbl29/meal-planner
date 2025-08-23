@@ -33,6 +33,7 @@ interface Meal {
   year: number
   isThisWeek: boolean
   eaten?: boolean
+  category?: "hurtig" | "mellem" | "langsom"
 }
 
 export default function MealPlannerApp() {
@@ -42,6 +43,7 @@ export default function MealPlannerApp() {
   const [newMealName, setNewMealName] = useState("")
   const [newMealWeek, setNewMealWeek] = useState("")
   const [newMealYear, setNewMealYear] = useState("")
+  const [newMealCategory, setNewMealCategory] = useState<"hurtig" | "mellem" | "langsom">("mellem")
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null)
   const [filter, setFilter] = useState<"all" | "thisWeek">("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -51,6 +53,19 @@ export default function MealPlannerApp() {
 
   const currentWeek = getWeek(new Date())
   const currentYear = getYear(new Date())
+
+  // Helper function to get category display info
+  const getCategoryInfo = (category?: "hurtig" | "mellem" | "langsom") => {
+    switch (category) {
+      case "hurtig":
+        return { label: "🚀 Hurtig", className: "bg-green-100 text-green-700 border-green-300" }
+      case "langsom":
+        return { label: "🐌 Langsom", className: "bg-orange-100 text-orange-700 border-orange-300" }
+      case "mellem":
+      default:
+        return { label: "⚡ Mellem", className: "bg-blue-100 text-blue-700 border-blue-300" }
+    }
+  }
 
   // Load meals on component mount
   useEffect(() => {
@@ -119,12 +134,14 @@ export default function MealPlannerApp() {
         year,
         isThisWeek: week === currentWeek && year === currentYear,
         eaten: false,
+        category: newMealCategory,
       })
 
       setMeals((prev) => [...prev, newMeal])
       setNewMealName("")
       setNewMealWeek(currentWeek.toString())
       setNewMealYear(currentYear.toString())
+      setNewMealCategory("mellem")
       setIsAddDialogOpen(false)
     } catch (error) {
       console.error("Failed to add meal:", error)
@@ -143,11 +160,13 @@ export default function MealPlannerApp() {
           year: Number.parseInt(newMealYear),
           isThisWeek: Number.parseInt(newMealWeek) === currentWeek && Number.parseInt(newMealYear) === currentYear,
           eaten: false,
+          category: newMealCategory,
         }
         setMeals((prev) => [...prev, localMeal])
         setNewMealName("")
         setNewMealWeek(currentWeek.toString())
         setNewMealYear(currentYear.toString())
+        setNewMealCategory("mellem")
         setIsAddDialogOpen(false)
       }
     } finally {
@@ -504,6 +523,21 @@ export default function MealPlannerApp() {
                     autoFocus={false}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="meal-category" className="text-slate-700 font-medium">
+                    Kategori
+                  </Label>
+                  <Select value={newMealCategory} onValueChange={(value) => setNewMealCategory(value as "hurtig" | "mellem" | "langsom")} disabled={saving}>
+                    <SelectTrigger className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hurtig">🚀 Hurtig</SelectItem>
+                      <SelectItem value="mellem">⚡ Mellem</SelectItem>
+                      <SelectItem value="langsom">🐌 Langsom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-4">
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>
 
@@ -682,6 +716,14 @@ export default function MealPlannerApp() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <h3 className="font-sf-display font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs rounded-full px-2 py-1 ${getCategoryInfo(meal.category).className}`}
+                            >
+                              {getCategoryInfo(meal.category).label}
+                            </Badge>
+                          </div>
                           <p className="text-slate-600 font-light">
                             Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                           </p>
@@ -748,10 +790,13 @@ export default function MealPlannerApp() {
                         {weekMeals.map((meal) => (
                           <div
                             key={meal.id}
-                            className="text-xs p-2 bg-slate-100 text-slate-700 rounded-lg truncate font-medium"
-                            title={meal.name}
+                            className="text-xs p-2 bg-slate-100 text-slate-700 rounded-lg font-medium"
+                            title={`${meal.name} - ${getCategoryInfo(meal.category).label}`}
                           >
-                            {meal.name}
+                            <div className="flex items-center justify-between">
+                              <span className="truncate">{meal.name}</span>
+                              <span className="ml-1 text-xs">{getCategoryInfo(meal.category).label.split(' ')[0]}</span>
+                            </div>
                           </div>
                         ))}
                         {weekMeals.length === 0 && <p className="text-xs text-slate-400 font-light">Ingen måltider</p>}
@@ -790,6 +835,14 @@ export default function MealPlannerApp() {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <h3 className="font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge
+                                variant="outline"
+                                className={`text-xs rounded-full px-2 py-1 ${getCategoryInfo(meal.category).className}`}
+                              >
+                                {getCategoryInfo(meal.category).label}
+                              </Badge>
+                            </div>
                             <p className="text-slate-600 font-light">
                               Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                             </p>
@@ -865,6 +918,25 @@ export default function MealPlannerApp() {
                     disabled={saving}
                     autoFocus={false}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="edit-meal-category" className="text-slate-700 font-medium">
+                    Kategori
+                  </Label>
+                  <Select 
+                    value={editingMeal.category || "mellem"} 
+                    onValueChange={(value) => setEditingMeal({ ...editingMeal, category: value as "hurtig" | "mellem" | "langsom" })} 
+                    disabled={saving}
+                  >
+                    <SelectTrigger className="mt-2 border-slate-200 rounded-xl focus:border-slate-400 focus:ring-slate-400/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hurtig">🚀 Hurtig</SelectItem>
+                      <SelectItem value="mellem">⚡ Mellem</SelectItem>
+                      <SelectItem value="langsom">🐌 Langsom</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-4">
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>
