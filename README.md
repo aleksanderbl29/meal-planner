@@ -1,8 +1,8 @@
-# Måltidsplanlægger (Meal Planner)
+# Meal Planner
 
-A modern Danish meal planning application built with Next.js and designed to help you organize your weekly meals efficiently.
+A modern meal planning application built with Next.js and designed to help you organize your weekly meals efficiently.
 
-[![Vercel](https://vercelbadge.vercel.app/api/aleksanderbl29/meal-planner)](https://meal-planner-aleksanderbl29s-projects.vercel.app/)
+![Vercel Deploy](https://deploy-badge.vercel.app/vercel/v0-meal-planning-app-nu)
 [![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=flat-square)](https://v0.dev/chat/projects/D6HPvrKtFRz)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
@@ -66,10 +66,21 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
    ```
 
 4. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
+   Create a `.env.local` file in the root directory with the following variables:
    ```
-   Add your Clerk publishable key and other required environment variables.
+   # Clerk Authentication
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+   CLERK_SECRET_KEY=your_clerk_secret_key_here
+   
+   # Vercel KV Database (for storage)
+   KV_URL=your_vercel_kv_url_here
+   KV_REST_API_URL=your_vercel_kv_rest_api_url_here
+   KV_REST_API_TOKEN=your_vercel_kv_rest_api_token_here
+   KV_REST_API_READ_ONLY_TOKEN=your_vercel_kv_rest_api_read_only_token_here
+   
+   # Next.js
+   NEXTAUTH_URL=http://localhost:3000
+   ```
 
 5. **Start the development server**
    ```bash
