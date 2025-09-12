@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
 import { da } from "date-fns/locale"
-import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Check, ArrowUp } from "lucide-react"
+import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Check, ArrowUp, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -48,6 +48,9 @@ export default function MealPlannerApp() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [showAdvancedDatePicker, setShowAdvancedDatePicker] = useState(false)
   const [showEditAdvancedDatePicker, setShowEditAdvancedDatePicker] = useState(false)
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set())
+  const [selectedHistoricalWeek, setSelectedHistoricalWeek] = useState<{ week: number; year: number } | null>(null)
+  const [isHistoricalWeekDialogOpen, setIsHistoricalWeekDialogOpen] = useState(false)
 
   const currentWeek = getWeek(new Date())
   const currentYear = getYear(new Date())
@@ -319,6 +322,62 @@ export default function MealPlannerApp() {
       if (a.year !== b.year) return b.year - a.year
       return b.week - a.week
     })
+
+  // Group historical meals by week and year
+  const groupedHistoricMeals = historicMeals.reduce((groups, meal) => {
+    const weekKey = `${meal.year}-${meal.week}`
+    if (!groups[weekKey]) {
+      groups[weekKey] = {
+        week: meal.week,
+        year: meal.year,
+        meals: []
+      }
+    }
+    groups[weekKey].meals.push(meal)
+    return groups
+  }, {} as Record<string, { week: number; year: number; meals: Meal[] }>)
+
+  // Convert to array and sort by year and week (most recent first)
+  const weekGroups = Object.values(groupedHistoricMeals).sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year
+    return b.week - a.week
+  })
+
+  const toggleWeekExpanded = (weekKey: string) => {
+    const newExpanded = new Set(expandedWeeks)
+    if (newExpanded.has(weekKey)) {
+      newExpanded.delete(weekKey)
+    } else {
+      newExpanded.add(weekKey)
+    }
+    setExpandedWeeks(newExpanded)
+  }
+
+  const addMealToHistoricalWeek = async (weekData: { week: number; year: number }) => {
+    if (!newMealName.trim()) return
+
+    try {
+      setSaving(true)
+      const newMeal = {
+        id: crypto.randomUUID(),
+        name: newMealName.trim(),
+        week: weekData.week,
+        year: weekData.year,
+        isThisWeek: weekData.week === currentWeek && weekData.year === currentYear,
+        eaten: false,
+      }
+
+      await createMeal(newMeal)
+      setMeals((prev) => [...prev, newMeal])
+      setNewMealName("")
+      setIsHistoricalWeekDialogOpen(false)
+      setSelectedHistoricalWeek(null)
+    } catch (error) {
+      console.error("Failed to add meal to historical week:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const getWeekDateRange = (week: number, year: number) => {
     const firstDayOfYear = new Date(year, 0, 1)
@@ -784,7 +843,7 @@ export default function MealPlannerApp() {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
-            {historicMeals.length === 0 ? (
+            {weekGroups.length === 0 ? (
               <Card className="border-0 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm">
                 <CardContent className="p-12 text-center">
                   <p className="text-slate-500 font-light">Ingen historiske måltider endnu</p>
@@ -793,60 +852,126 @@ export default function MealPlannerApp() {
             ) : (
               <div className="space-y-4">
                 <div className="text-sm text-slate-600 font-light mb-6">
-                  {historicMeals.length} måltider i alt
+                  {weekGroups.length} uger med måltider • {historicMeals.length} måltider i alt
                 </div>
-                {historicMeals.map((meal) => {
-                  const dateRange = getWeekDateRange(meal.week, meal.year)
+                {weekGroups.map((weekGroup) => {
+                  const weekKey = `${weekGroup.year}-${weekGroup.week}`
+                  const dateRange = getWeekDateRange(weekGroup.week, weekGroup.year)
+                  const isExpanded = expandedWeeks.has(weekKey)
+                  const isCurrentWeek = weekGroup.week === currentWeek && weekGroup.year === currentYear
+                  const isPastWeek = weekGroup.year < currentYear || (weekGroup.year === currentYear && weekGroup.week < currentWeek)
+                  
                   return (
                     <Card
-                      key={meal.id}
-                      className="border-0 shadow-lg rounded-2xl bg-white/60 backdrop-blur-sm group opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
-                      onClick={() => {
-                        setEditingMeal(meal)
-                        setIsEditDialogOpen(true)
-                      }}
+                      key={weekKey}
+                      className="border-0 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm group hover:bg-white/90 transition-colors"
                     >
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
+                      <CardContent className="p-0">
+                        {/* Week Header */}
+                        <div 
+                          className="p-6 cursor-pointer flex items-center justify-between"
+                          onClick={() => toggleWeekExpanded(weekKey)}
+                        >
                           <div className="flex-1">
-                            <h3 className="font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-medium text-xl text-slate-900">
+                                Uge {weekGroup.week}, {weekGroup.year}
+                              </h3>
+                              <Badge
+                                variant="outline"
+                                className={`rounded-full px-3 py-1 ${
+                                  isPastWeek
+                                    ? "border-green-300 text-green-700 bg-green-50"
+                                    : isCurrentWeek
+                                    ? "border-blue-300 text-blue-700 bg-blue-50"
+                                    : "border-slate-300 text-slate-600"
+                                }`}
+                              >
+                                {isPastWeek ? "Gennemført" : isCurrentWeek ? "Denne uge" : "Planlagt"}
+                              </Badge>
+                            </div>
                             <p className="text-slate-600 font-light">
-                              Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
+                              {dateRange.start} - {dateRange.end} • {weekGroup.meals.length} måltid{weekGroup.meals.length !== 1 ? "er" : ""}
                             </p>
-                            <Badge
-                              variant="outline"
-                              className={`mt-3 rounded-full px-3 py-1 ${
-                                meal.week < currentWeek || (meal.week === currentWeek && meal.year < currentYear)
-                                  ? "border-green-300 text-green-700 bg-green-50"
-                                  : meal.week === currentWeek && meal.year === currentYear
-                                  ? "border-blue-300 text-blue-700 bg-blue-50"
-                                  : "border-slate-300 text-slate-600"
-                              }`}
-                            >
-                              {meal.week < currentWeek || (meal.week === currentWeek && meal.year < currentYear)
-                                ? "Gennemført"
-                                : meal.week === currentWeek && meal.year === currentYear
-                                ? "Denne uge"
-                                : "Planlagt"
-                              }
-                            </Badge>
                           </div>
-                          <div className="flex flex-col sm:flex-row items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                promoteToCurrentWeek(meal.id)
+                                setSelectedHistoricalWeek({ week: weekGroup.week, year: weekGroup.year })
+                                setIsHistoricalWeekDialogOpen(true)
                               }}
-                              className="rounded-full hover:bg-blue-100 hover:text-blue-700"
-                              disabled={saving}
-                              title="Flyt til denne uge"
+                              className="rounded-full hover:bg-slate-100 text-slate-600 hover:text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Tilføj måltid til denne uge"
                             >
-                              <ArrowUp className="w-4 h-4" />
+                              <Plus className="w-4 h-4" />
                             </Button>
+                            {isExpanded ? (
+                              <ChevronDown className="w-5 h-5 text-slate-400" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-slate-400" />
+                            )}
                           </div>
                         </div>
+
+                        {/* Expanded Meals List */}
+                        {isExpanded && (
+                          <div className="border-t border-slate-100 bg-slate-50/50">
+                            <div className="p-4 space-y-3">
+                              {weekGroup.meals.map((meal) => (
+                                <div
+                                  key={meal.id}
+                                  className="bg-white rounded-xl p-4 flex items-center justify-between group/meal hover:shadow-sm transition-shadow cursor-pointer"
+                                  onClick={() => {
+                                    setEditingMeal(meal)
+                                    setIsEditDialogOpen(true)
+                                  }}
+                                >
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-slate-900">{meal.name}</h4>
+                                    {meal.eaten && (
+                                      <Badge variant="outline" className="mt-2 border-green-300 text-green-700 bg-green-50 rounded-full px-2 py-1 text-xs">
+                                        Spist
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover/meal:opacity-100 transition-opacity">
+                                    {!isCurrentWeek && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          promoteToCurrentWeek(meal.id)
+                                        }}
+                                        className="rounded-full hover:bg-blue-100 hover:text-blue-700 h-8 w-8"
+                                        disabled={saving}
+                                        title="Flyt til denne uge"
+                                      >
+                                        <ArrowUp className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost" 
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setEditingMeal(meal)
+                                        setIsEditDialogOpen(true)
+                                      }}
+                                      className="rounded-full hover:bg-slate-100 hover:text-slate-700 h-8 w-8"
+                                      title="Rediger måltid"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   )
@@ -1067,6 +1192,77 @@ export default function MealPlannerApp() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Meal to Historical Week Dialog */}
+        <Dialog open={isHistoricalWeekDialogOpen} onOpenChange={setIsHistoricalWeekDialogOpen}>
+          <DialogContent className="rounded-2xl border-0 shadow-2xl max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-light text-2xl text-slate-900">
+                Tilføj måltid til {selectedHistoricalWeek ? `Uge ${selectedHistoricalWeek.week}, ${selectedHistoricalWeek.year}` : ''}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedHistoricalWeek && (
+              <div className="space-y-6">
+                <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl">
+                  Valgt: Uge {selectedHistoricalWeek.week}, {selectedHistoricalWeek.year}
+                  <span className="ml-2 text-slate-500">
+                    ({getWeekDateRange(selectedHistoricalWeek.week, selectedHistoricalWeek.year).start} -{" "}
+                    {getWeekDateRange(selectedHistoricalWeek.week, selectedHistoricalWeek.year).end})
+                  </span>
+                </div>
+                
+                <div>
+                  <Label htmlFor="historical-meal-name" className="text-slate-700">
+                    Måltidets navn
+                  </Label>
+                  <Input
+                    id="historical-meal-name"
+                    value={newMealName}
+                    onChange={(e) => setNewMealName(e.target.value)}
+                    placeholder="Hvad skal I have?"
+                    className="mt-2 border-slate-200 rounded-xl py-3"
+                    disabled={saving}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !saving) {
+                        addMealToHistoricalWeek(selectedHistoricalWeek)
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => addMealToHistoricalWeek(selectedHistoricalWeek)}
+                    className="flex-1 bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
+                    disabled={saving || !newMealName.trim()}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Tilføjer...
+                      </>
+                    ) : (
+                      "Tilføj måltid"
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsHistoricalWeekDialogOpen(false)
+                      setSelectedHistoricalWeek(null)
+                      setNewMealName("")
+                    }}
+                    className="px-6 border-slate-200 rounded-xl"
+                    disabled={saving}
+                  >
+                    Annuller
+                  </Button>
                 </div>
               </div>
             )}
