@@ -369,7 +369,7 @@ export default function MealPlannerApp() {
 
   const generateYearOptions = () => {
     const options = []
-    const startYear = currentYear - 1
+    const startYear = currentYear - 3
     const endYear = currentYear + 2
     for (let year = startYear; year <= endYear; year++) {
       options.push(
@@ -508,7 +508,27 @@ export default function MealPlannerApp() {
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>
 
                   {/* Quick Selection */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeek(-2)}
+                      disabled={saving}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      For 2 uger siden
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeek(-1)}
+                      disabled={saving}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      Sidste uge
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -870,7 +890,27 @@ export default function MealPlannerApp() {
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>
 
                   {/* Quick Selection */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeekForEdit(-2)}
+                      disabled={saving}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      For 2 uger siden
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickWeekForEdit(-1)}
+                      disabled={saving}
+                      className="rounded-full border-slate-200 hover:bg-slate-50"
+                    >
+                      Sidste uge
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
