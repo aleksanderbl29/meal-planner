@@ -1165,7 +1165,7 @@ export default function MealPlannerApp() {
                       <AlertDialogHeader>
                         <AlertDialogTitle className="font-light">Slet måltid</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-600">
-                          Er du sikker på, at du vil slette "{editingMeal?.name}"? Dette kan ikke fortrydes.
+                          Er du sikker på, at du vil slette &ldquo;{editingMeal?.name}&rdquo;? Dette kan ikke fortrydes.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
