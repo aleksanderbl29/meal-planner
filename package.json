@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.8",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.9.2",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "1.1.1",
@@ -60,7 +60,7 @@
     "tailwind-merge": "^2.6.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zod": "3.25.67"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
