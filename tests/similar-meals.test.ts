@@ -18,6 +18,7 @@ test("normalizes case, punctuation, whitespace and Unicode", () => {
   assert.equal(mealFamily("  WOK:  MED   tofu! "), "wok")
   assert.equal(mealFamily("ÆRTEPURÉ med fisk"), mealFamily("ærtepure\u0301 med tofu"))
   assert.equal(mealFamily("Medaljoner med svampe"), "medaljoner")
+  assert.equal(mealFamily("Wok med"), "wok")
 })
 
 test("allows bare dish names but does not use substring or fuzzy matching", () => {
@@ -28,6 +29,7 @@ test("allows bare dish names but does not use substring or fuzzy matching", () =
 
 test("ignores empty, punctuation-only and incomplete base names", () => {
   for (const name of ["", "  ", "!!!", "med", "med tofu", "a med tofu"]) {
+    assert.equal(mealFamily(name), "")
     assert.deepEqual(findSimilarMeals({ name, meals }), [])
   }
 })
