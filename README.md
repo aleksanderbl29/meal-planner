@@ -90,13 +90,15 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Alternative Setup (without devenv)
+### Checks
 
-If you prefer not to use devenv:
+Wrap each command when running outside an interactive devenv shell:
 
-1. Ensure you have Node.js 18+ installed
-2. Install pnpm: `npm install -g pnpm`
-3. Follow steps 1, 3-6 above
+```bash
+devenv shell pnpm install --frozen-lockfile
+devenv shell pnpm exec tsc --noEmit
+devenv shell pnpm build
+```
 
 ## 🏗️ Project Structure
 
