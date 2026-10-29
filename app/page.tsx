@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getWeek, getYear, format, startOfWeek, addWeeks } from "date-fns"
+import { format, addWeeks } from "date-fns"
+import { getMealWeek, getMealWeekStart, getMealWeeksInYear, promoteMeal } from "@/lib/meal-week"
 import { da } from "date-fns/locale"
 import { Plus, Calendar, List, Edit, Trash2, Filter, MoreHorizontal, Loader2, Check, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,8 +50,7 @@ export default function MealPlannerApp() {
   const [showAdvancedDatePicker, setShowAdvancedDatePicker] = useState(false)
   const [showEditAdvancedDatePicker, setShowEditAdvancedDatePicker] = useState(false)
 
-  const currentWeek = getWeek(new Date())
-  const currentYear = getYear(new Date())
+  const { week: currentWeek, year: currentYear } = getMealWeek(new Date())
 
   // Load meals on component mount
   useEffect(() => {
@@ -257,18 +257,14 @@ export default function MealPlannerApp() {
   }
 
   const promoteToCurrentWeek = async (id: string) => {
+    if (saving) return
     try {
       setSaving(true)
       const mealToUpdate = meals.find((meal) => meal.id === id)
       if (!mealToUpdate) return
 
       // Move the meal to the current week and clear eaten status
-      const updatedMeal = {
-        ...mealToUpdate,
-        week: currentWeek,
-        year: currentYear,
-        eaten: false,
-      }
+      const updatedMeal = promoteMeal(mealToUpdate, new Date())
 
       await editMeal(updatedMeal)
       setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
@@ -285,12 +281,7 @@ export default function MealPlannerApp() {
         const mealToUpdate = meals.find((meal) => meal.id === id)
         if (!mealToUpdate) return
 
-        const updatedMeal = {
-          ...mealToUpdate,
-          week: currentWeek,
-          year: currentYear,
-          eaten: false,
-        }
+        const updatedMeal = promoteMeal(mealToUpdate, new Date())
         setMeals((prev) => prev.map((meal) => (meal.id === id ? updatedMeal : meal)))
       }
     } finally {
@@ -321,8 +312,7 @@ export default function MealPlannerApp() {
     })
 
   const getWeekDateRange = (week: number, year: number) => {
-    const firstDayOfYear = new Date(year, 0, 1)
-    const startOfTargetWeek = startOfWeek(addWeeks(firstDayOfYear, week - 1), { locale: da })
+    const startOfTargetWeek = getMealWeekStart(week, year)
     const endOfTargetWeek = new Date(startOfTargetWeek)
     endOfTargetWeek.setDate(startOfTargetWeek.getDate() + 6)
 
@@ -335,18 +325,7 @@ export default function MealPlannerApp() {
   const getWeeksForCalendar = () => {
     const weeks = []
     for (let i = -2; i <= 4; i++) {
-      let targetWeek = currentWeek + i
-      let targetYear = currentYear
-
-      if (targetWeek < 1) {
-        targetYear -= 1
-        targetWeek += 52
-      } else if (targetWeek > 52) {
-        targetYear += 1
-        targetWeek -= 52
-      }
-
-      weeks.push({ week: targetWeek, year: targetYear })
+      weeks.push(getMealWeek(addWeeks(getMealWeekStart(currentWeek, currentYear), i)))
     }
     return weeks
   }
@@ -355,9 +334,9 @@ export default function MealPlannerApp() {
     return meals.filter((meal) => meal.week === week && meal.year === year)
   }
 
-  const generateWeekOptions = () => {
+  const generateWeekOptions = (year: number) => {
     const options = []
-    for (let i = 1; i <= 52; i++) {
+    for (let i = 1; i <= getMealWeeksInYear(year); i++) {
       options.push(
         <SelectItem key={i} value={i.toString()}>
           Uge {i}
@@ -384,8 +363,7 @@ export default function MealPlannerApp() {
   const setQuickWeek = (weeksFromNow: number) => {
     const targetDate = new Date()
     targetDate.setDate(targetDate.getDate() + weeksFromNow * 7)
-    const targetWeek = getWeek(targetDate)
-    const targetYear = getYear(targetDate)
+    const { week: targetWeek, year: targetYear } = getMealWeek(targetDate)
 
     setNewMealWeek(targetWeek.toString())
     setNewMealYear(targetYear.toString())
@@ -396,8 +374,7 @@ export default function MealPlannerApp() {
 
     const targetDate = new Date()
     targetDate.setDate(targetDate.getDate() + weeksFromNow * 7)
-    const targetWeek = getWeek(targetDate)
-    const targetYear = getYear(targetDate)
+    const { week: targetWeek, year: targetYear } = getMealWeek(targetDate)
 
     setEditingMeal({
       ...editingMeal,
@@ -410,8 +387,7 @@ export default function MealPlannerApp() {
     if (!dateString) return
 
     const selectedDate = new Date(dateString)
-    const selectedWeek = getWeek(selectedDate)
-    const selectedYear = getYear(selectedDate)
+    const { week: selectedWeek, year: selectedYear } = getMealWeek(selectedDate)
 
     setNewMealWeek(selectedWeek.toString())
     setNewMealYear(selectedYear.toString())
@@ -421,8 +397,7 @@ export default function MealPlannerApp() {
     if (!dateString || !editingMeal) return
 
     const selectedDate = new Date(dateString)
-    const selectedWeek = getWeek(selectedDate)
-    const selectedYear = getYear(selectedDate)
+    const { week: selectedWeek, year: selectedYear } = getMealWeek(selectedDate)
 
     setEditingMeal({
       ...editingMeal,
@@ -432,8 +407,7 @@ export default function MealPlannerApp() {
   }
 
   const getDateFromWeekYear = (week: number, year: number) => {
-    const firstDayOfYear = new Date(year, 0, 1)
-    const startOfTargetWeek = startOfWeek(addWeeks(firstDayOfYear, week - 1))
+    const startOfTargetWeek = getMealWeekStart(week, year)
     return format(startOfTargetWeek, "yyyy-MM-dd")
   }
 
@@ -604,7 +578,7 @@ export default function MealPlannerApp() {
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue placeholder="Vælg uge" />
                             </SelectTrigger>
-                            <SelectContent>{generateWeekOptions()}</SelectContent>
+                            <SelectContent>{generateWeekOptions(Number(newMealYear))}</SelectContent>
                           </Select>
                         </div>
                         <div>
@@ -989,7 +963,7 @@ export default function MealPlannerApp() {
                             <SelectTrigger className="mt-2 border-slate-200 rounded-xl">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>{generateWeekOptions()}</SelectContent>
+                            <SelectContent>{generateWeekOptions(editingMeal.year)}</SelectContent>
                           </Select>
                         </div>
                         <div>
