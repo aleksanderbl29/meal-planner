@@ -8,6 +8,7 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     git
+    gh
   ];
 
   env = {
@@ -28,7 +29,7 @@
         enable = true;
         install.enable = false; # Installs all npm dependencies when devenv is started
       };
-                        pnpm.enable = true;
+      pnpm.enable = true;
     };
     typescript = {
       enable = true;
