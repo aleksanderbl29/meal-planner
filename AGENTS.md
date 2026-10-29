@@ -5,6 +5,7 @@ Use the existing devenv environment for every project command:
 
 Install dependencies with `devenv shell pnpm install --frozen-lockfile`.
 Run `devenv shell pnpm exec tsc --noEmit` and `devenv shell pnpm build`
-before submitting changes.
+before submitting changes. Run storage tests with
+`devenv shell node --experimental-strip-types --test tests/storage.test.mjs`.
 
 Keep UI text Danish and follow the existing components and visual style.

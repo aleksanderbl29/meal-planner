@@ -96,6 +96,7 @@ Run development tools through devenv, including in separate terminal sessions:
 
 ```bash
 devenv shell pnpm exec tsc --noEmit
+devenv shell node --experimental-strip-types --test tests/storage.test.mjs
 devenv shell pnpm build
 ```
 
