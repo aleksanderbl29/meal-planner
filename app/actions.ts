@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { getMeals, addMeal, updateMeal, deleteMeal, type Meal } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
 export async function fetchMeals() {
   try {
@@ -41,6 +42,15 @@ export async function createMeal(meal: Omit<Meal, "id">) {
   }
 }
 
+const editedMealSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  week: z.number().int().min(1).max(53),
+  year: z.number().int().min(1).max(9999),
+  isThisWeek: z.boolean(),
+  eaten: z.boolean().optional(),
+})
+
 export async function editMeal(meal: Meal) {
   try {
     const { userId } = await auth()
@@ -49,9 +59,10 @@ export async function editMeal(meal: Meal) {
       throw new Error("Authentication required")
     }
 
-    await updateMeal(meal)
+    const updatedMeal = editedMealSchema.parse(meal)
+    await updateMeal(updatedMeal)
     revalidatePath("/")
-    return meal
+    return updatedMeal
   } catch (error) {
     console.error("Error in editMeal:", error)
     throw new Error("Failed to update meal")

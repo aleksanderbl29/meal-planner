@@ -43,6 +43,7 @@ export default function MealPlannerApp() {
   const [newMealWeek, setNewMealWeek] = useState("")
   const [newMealYear, setNewMealYear] = useState("")
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null)
+  const [editError, setEditError] = useState("")
   const [filter, setFilter] = useState<"all" | "thisWeek">("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -159,34 +160,21 @@ export default function MealPlannerApp() {
     if (!editingMeal || !editingMeal.name.trim() || saving) return
 
     try {
+      setEditError("")
       setSaving(true)
       const updatedMeal = {
         ...editingMeal,
+        name: editingMeal.name.trim(),
         isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
       }
 
-      await editMeal(updatedMeal)
-      setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
+      const savedMeal = await editMeal(updatedMeal)
+      setMeals((prev) => prev.map((meal) => (meal.id === savedMeal.id ? savedMeal : meal)))
       setEditingMeal(null)
       setIsEditDialogOpen(false)
     } catch (error) {
       console.error("Failed to update meal:", error)
-      
-      // Check if it's an authentication error
-      if (error instanceof Error && error.message.includes("Authentication required")) {
-        console.log("User not authenticated, cannot update meal")
-        // Don't update meal locally if user is not authenticated
-        return
-      } else {
-        // Fallback to local-only operation for other errors
-        const updatedMeal = {
-          ...editingMeal,
-          isThisWeek: editingMeal.week === currentWeek && editingMeal.year === currentYear,
-        }
-        setMeals((prev) => prev.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal)))
-        setEditingMeal(null)
-        setIsEditDialogOpen(false)
-      }
+      setEditError("Måltidet kunne ikke gemmes. Dine ændringer er bevaret. Prøv igen.")
     } finally {
       setSaving(false)
     }
@@ -860,8 +848,11 @@ export default function MealPlannerApp() {
         <Dialog
           open={isEditDialogOpen}
           onOpenChange={(open) => {
+            if (saving) return
             setIsEditDialogOpen(open)
+            setEditError("")
             if (!open) {
+              setEditingMeal(null)
               setShowEditAdvancedDatePicker(false)
             }
           }}
@@ -966,7 +957,7 @@ export default function MealPlannerApp() {
                         <Input
                           id="edit-date-picker"
                           type="date"
-                          defaultValue={getDateFromWeekYear(editingMeal.week, editingMeal.year)}
+                          value={getDateFromWeekYear(editingMeal.week, editingMeal.year)}
                           onChange={(e) => handleEditDatePickerChange(e.target.value)}
                           className="mt-2 border-slate-200 rounded-xl"
                           disabled={saving}
@@ -1011,11 +1002,12 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
+                {editError && <p role="alert" className="text-sm text-red-600">{editError}</p>}
                 <div className="flex gap-3">
                   <Button
                     onClick={updateMeal}
                     className="flex-1 bg-slate-900 hover:bg-slate-800 rounded-xl py-3"
-                    disabled={saving}
+                    disabled={saving || !editingMeal.name.trim()}
                   >
                     {saving ? (
                       <>
