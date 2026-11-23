@@ -82,15 +82,28 @@ export async function addMeal(meal: Meal): Promise<Meal[]> {
 }
 
 export async function updateMeal(updatedMeal: Meal): Promise<Meal[]> {
-  try {
-    const currentMeals = await getMeals()
+  // Server actions cannot persist to browser localStorage. Report failures so
+  // the edit dialog can retain the draft for retry.
+  if (typeof window === "undefined") {
+    if (!hasKVCredentials()) throw new Error("Meal storage is not configured")
+
+    const { kv } = await import("@vercel/kv")
+    const currentMeals = await kv.get<Meal[]>(MEALS_KEY)
+    if (!currentMeals?.some((meal) => meal.id === updatedMeal.id)) {
+      throw new Error("Meal no longer exists")
+    }
     const updatedMeals = currentMeals.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal))
-    await saveMeals(updatedMeals)
+    await kv.set(MEALS_KEY, updatedMeals)
     return updatedMeals
-  } catch (error) {
-    console.error("Error updating meal:", error)
-    throw error
   }
+
+  const currentMeals = getLocalStorageMeals()
+  if (!currentMeals.some((meal) => meal.id === updatedMeal.id)) {
+    throw new Error("Meal no longer exists")
+  }
+  const updatedMeals = currentMeals.map((meal) => (meal.id === updatedMeal.id ? updatedMeal : meal))
+  localStorage.setItem(MEALS_KEY, JSON.stringify(updatedMeals))
+  return updatedMeals
 }
 
 export async function deleteMeal(mealId: string): Promise<Meal[]> {
