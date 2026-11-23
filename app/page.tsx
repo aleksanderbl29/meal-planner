@@ -25,15 +25,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
 import { fetchMeals, createMeal, editMeal, removeMeal } from "./actions"
-
-interface Meal {
-  id: string
-  name: string
-  week: number
-  year: number
-  isThisWeek: boolean
-  eaten?: boolean
-}
+import type { Meal } from "@/lib/storage"
+import { MealFeedback, MealFeedbackSummary } from "@/components/meal-feedback"
 
 export default function MealPlannerApp() {
   const [meals, setMeals] = useState<Meal[]>([])
@@ -700,8 +693,16 @@ export default function MealPlannerApp() {
                   >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <h3 className="font-sf-display font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                          <MealFeedbackSummary meal={meal} />
+                          <Button variant="ghost" size="sm" className="rounded-full" disabled={saving}
+                            aria-label={`Vurder eller rediger ${meal.name}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setEditingMeal(meal)
+                              setIsEditDialogOpen(true)
+                            }}>Vurder / rediger</Button>
                           <p className="text-slate-600 font-light">
                             Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                           </p>
@@ -808,8 +809,16 @@ export default function MealPlannerApp() {
                     >
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-lg text-slate-900 mb-1">{meal.name}</h3>
+                            <MealFeedbackSummary meal={meal} />
+                            <Button variant="ghost" size="sm" className="rounded-full" disabled={saving}
+                              aria-label={`Vurder eller rediger ${meal.name}`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setEditingMeal(meal)
+                                setIsEditDialogOpen(true)
+                              }}>Vurder / rediger</Button>
                             <p className="text-slate-600 font-light">
                               Uge {meal.week}, {meal.year} • {dateRange.start} - {dateRange.end}
                             </p>
@@ -866,7 +875,7 @@ export default function MealPlannerApp() {
             }
           }}
         >
-          <DialogContent className="rounded-2xl border-0 shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogContent className="rounded-2xl border-0 shadow-2xl max-h-[90dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-sf-display font-light text-slate-900">Rediger måltid</DialogTitle>
             </DialogHeader>
@@ -1011,6 +1020,7 @@ export default function MealPlannerApp() {
                     </div>
                   )}
                 </div>
+                <MealFeedback meal={editingMeal} onChange={setEditingMeal} disabled={saving} />
                 <div className="flex gap-3">
                   <Button
                     onClick={updateMeal}

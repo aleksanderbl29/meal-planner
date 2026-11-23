@@ -58,11 +58,11 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
    ```bash
    devenv shell
    ```
-   This will automatically set up Node.js, npm, pnpm, and all required dependencies.
+   This provides Node.js, npm and pnpm. Install project dependencies in the next step.
 
 3. **Install project dependencies**
    ```bash
-   pnpm install
+   devenv shell pnpm install --frozen-lockfile
    ```
 
 4. **Set up environment variables**
@@ -84,19 +84,21 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
 
 5. **Start the development server**
    ```bash
-   pnpm dev
+   devenv shell pnpm dev
    ```
 
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Alternative Setup (without devenv)
+### Checks
 
-If you prefer not to use devenv:
+Run development tools through devenv, including in separate terminal sessions:
 
-1. Ensure you have Node.js 18+ installed
-2. Install pnpm: `npm install -g pnpm`
-3. Follow steps 1, 3-6 above
+```bash
+devenv shell pnpm exec tsc --noEmit
+devenv shell node --experimental-strip-types --test tests/storage.test.mjs
+devenv shell pnpm build
+```
 
 ## 🏗️ Project Structure
 
