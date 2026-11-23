@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
 import { fetchMeals, createMeal, editMeal, removeMeal } from "./actions"
+import { SimilarMeals } from "@/components/similar-meals"
 
 interface Meal {
   id: string
@@ -503,6 +504,7 @@ export default function MealPlannerApp() {
                     disabled={saving}
                     autoFocus={false}
                   />
+                  <SimilarMeals name={newMealName} meals={meals} />
                 </div>
                 <div className="space-y-4">
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>
@@ -885,6 +887,7 @@ export default function MealPlannerApp() {
                     disabled={saving}
                     autoFocus={false}
                   />
+                  <SimilarMeals name={editingMeal.name} meals={meals} excludeId={editingMeal.id} />
                 </div>
                 <div className="space-y-4">
                   <Label className="text-slate-700 font-medium">Hvornår?</Label>

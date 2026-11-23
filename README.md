@@ -58,11 +58,11 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
    ```bash
    devenv shell
    ```
-   This will automatically set up Node.js, npm, pnpm, and all required dependencies.
+   This provides Node.js, npm, and pnpm. Install project dependencies in the next step.
 
 3. **Install project dependencies**
    ```bash
-   pnpm install
+   devenv shell pnpm install --frozen-lockfile
    ```
 
 4. **Set up environment variables**
@@ -84,19 +84,28 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
 
 5. **Start the development server**
    ```bash
-   pnpm dev
+   devenv shell pnpm dev
    ```
 
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Alternative Setup (without devenv)
+Run each project command through `devenv shell`, including in separate terminal
+or agent calls. Do not install tools globally.
 
-If you prefer not to use devenv:
+### Checks
 
-1. Ensure you have Node.js 18+ installed
-2. Install pnpm: `npm install -g pnpm`
-3. Follow steps 1, 3-6 above
+```bash
+devenv shell pnpm test
+devenv shell pnpm exec tsc --noEmit
+devenv shell pnpm build
+```
+
+The similarity tests compile into a temporary directory using the existing
+TypeScript dependency, run with Node's built-in test runner, and remove the
+temporary files. They need no Clerk, KV, or AI credentials.
+
+See [Lignende retter](docs/similar-meals.md) for the matching rule and its limits.
 
 ## 🏗️ Project Structure
 
