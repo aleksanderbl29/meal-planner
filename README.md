@@ -90,13 +90,20 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Alternative Setup (without devenv)
+### Checks
 
-If you prefer not to use devenv:
+Wrap each command in `devenv shell` when running outside an interactive development shell:
 
-1. Ensure you have Node.js 18+ installed
-2. Install pnpm: `npm install -g pnpm`
-3. Follow steps 1, 3-6 above
+```bash
+devenv shell pnpm install --frozen-lockfile
+devenv shell pnpm test
+devenv shell pnpm exec tsc --noEmit
+devenv shell pnpm build
+```
+
+The tests cover promotion, Danish ISO week-year boundaries, and local storage persistence.
+Week and year values use ISO weeks, including week 53. Existing saved meal dates are
+kept as stored rather than migrated.
 
 ## 🏗️ Project Structure
 
