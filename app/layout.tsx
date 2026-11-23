@@ -1,13 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs"
+import { ClerkProvider } from "@clerk/nextjs"
+import { AuthControls } from "@/components/auth-controls"
 import "../styles/globals.css"
 
 export const metadata: Metadata = {
@@ -29,13 +23,7 @@ export default function RootLayout({
             <div className="container mx-auto flex justify-between items-center">
               <h1 className="text-xl font-bold">Måltidsplanlægger</h1>
               <div className="flex items-center gap-4">
-                <SignedOut>
-                  <SignInButton mode="modal" />
-                  <SignUpButton mode="modal" />
-                </SignedOut>
-                <SignedIn>
-                  <UserButton />
-                </SignedIn>
+                <AuthControls />
               </div>
             </div>
           </header>

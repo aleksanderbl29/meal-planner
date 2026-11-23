@@ -90,13 +90,26 @@ This project uses [devenv.sh](https://devenv.sh/) for a reproducible development
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Alternative Setup (without devenv)
+### Checks
 
-If you prefer not to use devenv:
+Run project tools through the development environment, including in separate shells:
 
-1. Ensure you have Node.js 18+ installed
-2. Install pnpm: `npm install -g pnpm`
-3. Follow steps 1, 3-6 above
+```bash
+devenv shell -- pnpm install --frozen-lockfile
+devenv shell -- pnpm exec tsc --noEmit
+devenv shell -- pnpm build
+```
+
+To check that missing assets render a clean 404 without Clerk middleware errors,
+start the app on port 3100, then run the HTTP regression check in another shell:
+
+```bash
+devenv shell -- pnpm dev --port 3100
+devenv shell -- node scripts/check-not-found.mjs
+```
+
+Set `TEST_BASE_URL` to check another running instance. This check covers missing
+static assets and an existing asset. It does not verify authenticated meal operations.
 
 ## 🏗️ Project Structure
 
